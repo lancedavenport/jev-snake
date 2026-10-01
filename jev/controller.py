@@ -27,24 +27,32 @@ class JevController:
 
     def get_action(self, state: GameState) -> Action | None:
         """Called once per game tick. Return an Action, or None to keep going straight."""
+        options = describe_moves(state)
         start = time.perf_counter()
         try:
-            action = self.ask(state)
+            action = self.ask(state, options)
         except TypeSafeError as e:
             # Failed calls fall back to going straight; log them so they don't look like bad decisions.
             logger.warning("step %d: API call failed, going straight: %s", state.steps, e)
             return None
         elapsed_ms = (time.perf_counter() - start) * 1000
-        logger.info(
-            "step %d: %s (score %d, %.0f ms)",
-            state.steps, action.value if action else "NONE", state.score, elapsed_ms,
+        picked = action.value if action else "NONE"
+        # Warn when Jev ignores its labels, so those moves stand out in the log.
+        ignored_labels = options.get(picked, "").startswith("DEADLY") and any(
+            not label.startswith("DEADLY") for label in options.values()
+        )
+        logger.log(
+            logging.WARNING if ignored_labels else logging.INFO,
+            "step %d: %s%s (score %d, %.0f ms) | options: %s",
+            state.steps, picked, " (DEADLY, a safe move was available)" if ignored_labels else "",
+            state.score, elapsed_ms, "; ".join(f"{move}={label}" for move, label in options.items()),
         )
         return action
 
     def reset(self) -> None:
         """Called when a new game starts. Clear any per-game memory here."""
 
-    def ask(self, curr_state: GameState) -> Action | None:
+    def ask(self, curr_state: GameState, options: dict[str, str]) -> Action | None:
         r = self.client.system_one(
             state=curr_state.to_dict(),
             questions={
@@ -54,7 +62,7 @@ class JevController:
                         + " Pick the move that is safe and gets closer to the food."
                         " Never pick a DEADLY move unless every move is DEADLY."
                     ),
-                    criteria=describe_moves(curr_state),
+                    criteria=options,
                 )
             }
         )
