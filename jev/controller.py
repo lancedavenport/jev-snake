@@ -49,16 +49,58 @@ class JevController:
             state=curr_state.to_dict(),
             questions={
                 "direction": Choice(
-                    instructions=RULES + " Which direction should the Snake go?",
-                    criteria={
-                          "UP": "Move toward the top of the screen (y - 1)",
-                          "DOWN": "Move toward the bottom of the screen (y + 1)",
-                          "LEFT": "Move toward the left of the screen (x - 1)",
-                          "RIGHT": "Move toward the right of the screen (x + 1)",
-                          "NONE": "Keep moving in the current direction",
-                    }
+                    instructions=(
+                        RULES + " " + describe_food(curr_state)
+                        + " Pick the move that is safe and gets closer to the food."
+                        " Never pick a DEADLY move unless every move is DEADLY."
+                    ),
+                    criteria=describe_moves(curr_state),
                 )
             }
         )
-        choice = r.choices["direction"].choice
-        return None if choice == "NONE" else Action(choice)
+        return Action(r.choices["direction"].choice)
+
+
+def _offset(a: int, b: int, size: int) -> int:
+    """Shortest signed distance from a to b on a wrapping axis."""
+    d = (b - a) % size
+    return d - size if d > size // 2 else d
+
+
+def _food_offset(state: GameState) -> tuple[int, int]:
+    """(dx, dy) from the head to the food, the short way across wrapping edges."""
+    # Food is only None once the snake fills the board, and Jev is never asked after the game ends.
+    assert state.food is not None, "no food: the game is already over"
+    hx, hy = state.head
+    fx, fy = state.food
+    return _offset(hx, fx, state.width), _offset(hy, fy, state.height)
+
+
+def describe_food(state: GameState) -> str:
+    """Where the food is relative to the head, e.g. "The food is 9 cells right and 4 cells down." """
+    dx, dy = _food_offset(state)
+    parts = []
+    if dx:
+        parts.append(f"{abs(dx)} cells {'right' if dx > 0 else 'left'}")
+    if dy:
+        parts.append(f"{abs(dy)} cells {'down' if dy > 0 else 'up'}")
+    return "The food is " + " and ".join(parts) + " from your head."
+
+
+def describe_moves(state: GameState) -> dict[str, str]:
+    """The legal moves this turn (no reversal), each labeled safe/DEADLY and closer/away from food."""
+    hx, hy = state.head
+    dx, dy = _food_offset(state)
+    blocked = set(state.snake[:-1])  # the tail moves out of the way
+    options = {}
+    for action in Action:
+        if action == state.direction.opposite:
+            continue  # reversing is ignored by the game, so don't offer it
+        mx, my = action.delta
+        nxt = ((hx + mx) % state.width, (hy + my) % state.height)
+        closer = abs(dx - mx) + abs(dy - my) < abs(dx) + abs(dy)
+        if nxt in blocked:
+            options[action.value] = "DEADLY: runs into your own body"
+        else:
+            options[action.value] = "safe, " + ("moves closer to the food" if closer else "moves away from the food")
+    return options
