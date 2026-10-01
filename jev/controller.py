@@ -13,13 +13,12 @@ RULES = (
       "Moving directly opposite your current direction is ignored. Reach the food without dying."
   )
 
-api_key = os.getenv("API_KEY")
-if not api_key:
-    raise SystemExit("API_KEY is not set; copy .env.example to .env and add your key.")
-
 
 class JevController:
     def __init__(self, model: str | None = "jev-1.13.0") -> None:
+        api_key = os.getenv("API_KEY")
+        if not api_key:
+            raise SystemExit("API_KEY is not set; copy .env.example to .env and add your key.")
         self.client = TypeSafeClient(api_key=api_key, model=model)
 
     def get_action(self, state: GameState) -> Action | None:
