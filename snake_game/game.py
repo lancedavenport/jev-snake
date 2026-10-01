@@ -98,7 +98,10 @@ class StepResult(NamedTuple):
 
 
 class SnakeGame:
-    """Grid-based Snake. One call to `step()` moves the snake exactly one cell."""
+    """Grid-based Snake. One call to `step()` moves the snake exactly one cell.
+
+    The board edges wrap around, so the only way to die is hitting yourself.
+    """
 
     def __init__(self, width: int = 20, height: int = 20, seed: int | None = None) -> None:
         if width < 5 or height < 5:
@@ -148,13 +151,14 @@ class SnakeGame:
         self._steps += 1
         dx, dy = self._direction.delta
         hx, hy = self._snake[0]
-        new_head = (hx + dx, hy + dy)
+        # Edges wrap around: leaving one side re-enters on the opposite side.
+        new_head = ((hx + dx) % self.width, (hy + dy) % self.height)
         eating = new_head == self._food
 
         # The tail vacates its cell this tick unless the snake is growing,
         # so moving into the current tail cell is legal.
         blocking = list(self._snake) if eating else list(self._snake)[:-1]
-        if not self._in_bounds(new_head) or new_head in blocking:
+        if new_head in blocking:
             self._game_over = True
             return StepResult(self.get_state(), REWARD_DEATH, True)
 
@@ -170,10 +174,6 @@ class SnakeGame:
             self._snake.pop()
 
         return StepResult(self.get_state(), reward, self._game_over)
-
-    def _in_bounds(self, pos: Position) -> bool:
-        x, y = pos
-        return 0 <= x < self.width and 0 <= y < self.height
 
     def _spawn_food(self) -> Position | None:
         occupied = set(self._snake)

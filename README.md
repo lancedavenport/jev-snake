@@ -4,21 +4,24 @@ A small, clean Snake game in Python + Pygame, built so an AI controller ("Jev") 
 
 ## Setup
 
-Requires Python 3.10+.
+Requires Python 3.10+. With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
 ```
+
+Without uv: `python3 -m venv .venv`, activate it, then `pip install -r requirements.txt`.
 
 The only dependency is [`pygame-ce`](https://pyga.me/), the maintained fork of Pygame. You still write `import pygame`. Upstream `pygame` 2.6.1 has a broken font module on Python 3.14.
 
 ## Run
 
 ```bash
-python main.py
+uv run main.py
 ```
+
+(Or `python main.py` with `.venv` activated.)
 
 | Key              | Action             |
 | ---------------- | ------------------ |
@@ -55,6 +58,8 @@ state, reward, done = game.step(Action.UP)        # also accepts "UP" or None (k
 ```
 
 **Actions:** `UP`, `DOWN`, `LEFT`, `RIGHT`. Reversing directly into the snake's neck is ignored.
+
+**Edges wrap around:** moving off one side brings the snake back on the opposite side, so the only way to die is running into yourself.
 
 **`GameState`** (immutable):
 
