@@ -13,7 +13,11 @@ uv pip install -r requirements.txt
 
 Without uv: `python3 -m venv .venv`, activate it, then `pip install -r requirements.txt`.
 
-The only dependency is [`pygame-ce`](https://pyga.me/), the maintained fork of Pygame. You still write `import pygame`. Upstream `pygame` 2.6.1 has a broken font module on Python 3.14.
+Dependencies:
+
+- [`pygame-ce`](https://pyga.me/): the maintained fork of Pygame. You still write `import pygame`. Upstream `pygame` 2.6.1 has a broken font module on Python 3.14.
+- `typesafe-sdk`: the model API Jev uses to pick moves.
+- `python-dotenv`: loads Jev's API key from `.env`.
 
 ## Run
 
@@ -99,6 +103,23 @@ class JevController:
 ```
 
 It follows the `Controller` protocol in `snake_game/controllers.py`. Until you implement it, it returns `None`, so the snake just goes straight.
+
+### API key
+
+Jev calls the TypeSafe API, which needs an API key. Copy the example env file and fill in your key:
+
+```bash
+cp .env.example .env
+```
+
+```bash
+# .env
+API_KEY=your-key-here
+```
+
+`jev/controller.py` loads `.env` with `python-dotenv` when it's imported, then reads the key with `os.getenv("API_KEY")`. `.env` is git-ignored, so the key never gets committed; `.env.example` is the template you commit. The keyboard game doesn't need a key.
+
+### Running Jev
 
 There are two ways to run it:
 
