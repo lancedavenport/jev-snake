@@ -1,7 +1,6 @@
-"""Controllers decide which action the snake takes each tick.
+"""Pygame-side controllers: keyboard input and a background-thread wrapper.
 
-Anything with a `get_action(state)` method can drive the game, so a future
-AI/Jev controller only needs to implement the `Controller` protocol.
+Every controller subclasses `Controller` from `snake_game.base`.
 """
 
 from __future__ import annotations
@@ -9,24 +8,14 @@ from __future__ import annotations
 import threading
 from collections import deque
 from concurrent.futures import Future
-from typing import Protocol
 
 import pygame
 
+from snake_game.base import Controller
 from snake_game.game import Action, GameState
 
 
-class Controller(Protocol):
-    def get_action(self, state: GameState) -> Action | None:
-        """Return the next action, or None to keep moving in the current direction."""
-        ...
-
-    def reset(self) -> None:
-        """Called when a new game starts."""
-        ...
-
-
-class KeyboardController:
+class KeyboardController(Controller):
     """Human input via arrow keys or WASD."""
 
     KEY_MAP: dict[int, Action] = {
