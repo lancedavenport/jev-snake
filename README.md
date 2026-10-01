@@ -125,10 +125,12 @@ There are two ways to run it:
 
 1. **Watch Jev play:** `uv run main.py --jev`. The game starts immediately and ignores direction keys (P, R and Esc still work). Jev plays **turn-based**: `get_action` runs on a background thread (`BackgroundController` in `snake_game/controllers.py`), and the game steps only once Jev has answered for the current state, at most 10 steps per second. The window keeps drawing at 60 FPS while Jev thinks, and Jev never acts on an outdated board.
 
+   Jev only sees moves worth considering: each is labeled with whether it gets closer to the food and how many empty cells the snake could still reach afterwards (a flood fill). Moves into its own body (`DEADLY`) or into a pocket smaller than the snake (`TRAP`) are left out whenever a better move exists.
+
    Each move is logged to the terminal with its latency and the options Jev was given. A move labeled `DEADLY` while a safe one was available, and any failed API call, is logged as a warning (the snake goes straight on a failure):
 
    ```text
-   INFO jev.controller: step 12: LEFT (score 2, 430 ms) | options: UP=safe, moves away from the food; LEFT=safe, moves closer to the food; DOWN=DEADLY: runs into your own body
+   INFO jev.controller: step 12: LEFT (score 2, 430 ms) | options: UP=safe, moves away from the food, 372 cells of room; LEFT=safe, moves closer to the food, 372 cells of room
    WARNING jev.controller: step 40: DOWN (DEADLY, a safe move was available) (score 5, 120 ms) | options: ...
    WARNING jev.controller: step 13: API call failed, going straight: ...
    INFO root: Game over: score 7 after 94 steps
