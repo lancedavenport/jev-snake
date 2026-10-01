@@ -1,6 +1,10 @@
 # jev-snake
 
-A small, clean Snake game in Python + Pygame, built so an AI controller ("Jev") can be plugged in later.
+A small Snake game in Python + Pygame, played by an AI controller ("Jev").
+
+## About
+
+Just a quick project to work on and get some hands-on exposure to Jev. Claude built the Snake game itself (the game logic, rendering and keyboard controls), and I worked on the Jev side: hooking up the model, writing the prompts and iterating on how it plays.
 
 ## Setup
 
