@@ -45,16 +45,20 @@ jev-snake/
 ├── main.py                  # Game loop: input, fixed-timestep updates, rendering
 ├── snake_game/
 │   ├── game.py              # Pure game logic (no Pygame) + reset/get_state/step API
-│   ├── controllers.py       # Controller protocol + KeyboardController
+│   ├── controllers.py       # Controller protocol, KeyboardController, BackgroundController
 │   └── renderer.py          # Draws a GameState with Pygame
 ├── jev/
-│   └── controller.py        # JevController: the AI's get_action (stub for now)
+│   └── controller.py        # JevController: asks the model for each move
+├── .env.example             # Template for Jev's API key
+├── LICENSE
 └── requirements.txt
 ```
 
 The game logic in `game.py` doesn't import Pygame, so it can run headless and as fast as you like. The renderer only reads state, and controllers only choose actions.
 
 Movement is deterministic: `main.py` renders at 60 FPS but advances the game on a fixed timestep (10 ticks/second). One `step()` = the snake moves exactly one cell. Pass `seed=` to `SnakeGame` for reproducible food placement.
+
+To change the board size, edit `GRID_WIDTH` and `GRID_HEIGHT` in `main.py` (minimum 5×5). For big boards, also pass a smaller `cell_size` to `Renderer` so the window fits on screen.
 
 ## Game API
 
@@ -93,20 +97,13 @@ state, reward, done = game.step(Action.UP)        # also accepts "UP" or None (k
 
 Jev lives in its own package, `jev/`, next to `snake_game/`. `jev` imports from `snake_game`, and `snake_game` never imports `jev`, so the game stays independent of the AI and its dependencies.
 
-Fill in `get_action` in `jev/controller.py`:
+### How it works
 
-```python
-class JevController:
-    def get_action(self, state: GameState) -> Action | None:
-        # Decide using state.head, state.body, state.food, state.direction, ...
-        return Action.UP
+`JevController` in `jev/controller.py` follows the `Controller` protocol in `snake_game/controllers.py`: the game calls `get_action(state)` once per move, and `reset()` when a new game starts. Each move:
 
-    def reset(self) -> None:
-        # Clear any per-game memory.
-        ...
-```
-
-It follows the `Controller` protocol in `snake_game/controllers.py`. Until you implement it, it returns `None`, so the snake just goes straight.
+1. `describe_moves` works out the moves worth considering and labels each one (see below).
+2. `ask` sends the game state, the rules and where the food is to the TypeSafe API (`system_one` with a `Choice` question, model `jev-1.13.0`), with the labeled moves as the choices.
+3. The model's pick comes back as an `Action`. If the API call fails, the snake keeps going straight.
 
 ### API key
 
@@ -123,13 +120,22 @@ API_KEY=your-key-here
 
 `jev/controller.py` loads `.env` with `python-dotenv` when it's imported, then reads the key with `os.getenv("API_KEY")`. `.env` is git-ignored, so the key never gets committed; `.env.example` is the template you commit. The keyboard game doesn't need a key.
 
+### Move labels
+
+Jev only sees moves worth considering. Each is labeled with whether it gets closer to the food and how many empty cells the snake could still reach afterwards (a flood fill):
+
+```text
+LEFT=safe, moves closer to the food, 372 cells of room
+UP=TRAP: only 6 cells of room, moves away from the food
+```
+
+Reversals are never offered (the game ignores them). Moves into its own body (`DEADLY`) or into a pocket smaller than the snake (`TRAP`) are left out whenever a better move exists.
+
 ### Running Jev
 
 There are two ways to run it:
 
 1. **Watch Jev play:** `uv run main.py --jev`. The game starts immediately and ignores direction keys (P, R and Esc still work). Jev plays **turn-based**: `get_action` runs on a background thread (`BackgroundController` in `snake_game/controllers.py`), and the game steps only once Jev has answered for the current state, at most 10 steps per second. The window keeps drawing at 60 FPS while Jev thinks, and Jev never acts on an outdated board.
-
-   Jev only sees moves worth considering: each is labeled with whether it gets closer to the food and how many empty cells the snake could still reach afterwards (a flood fill). Moves into its own body (`DEADLY`) or into a pocket smaller than the snake (`TRAP`) are left out whenever a better move exists.
 
    Each move is logged to the terminal with its latency and the options Jev was given. Failed API calls are logged as warnings (the snake goes straight on a failure):
 
@@ -153,3 +159,7 @@ There are two ways to run it:
        state, reward, done = game.step(jev.get_action(state))
    print("Final score:", state.score)
    ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
