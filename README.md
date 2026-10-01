@@ -39,6 +39,8 @@ jev-snake/
 │   ├── game.py              # Pure game logic (no Pygame) + reset/get_state/step API
 │   ├── controllers.py       # Controller protocol + KeyboardController
 │   └── renderer.py          # Draws a GameState with Pygame
+├── jev/
+│   └── controller.py        # JevController: the AI's get_action (stub for now)
 └── requirements.txt
 ```
 
@@ -81,23 +83,32 @@ state, reward, done = game.step(Action.UP)        # also accepts "UP" or None (k
 
 ## Plugging in Jev (AI controller)
 
-A controller is anything with a `get_action(state)` method (see the `Controller` protocol in `snake_game/controllers.py`):
+Jev lives in its own package, `jev/`, next to `snake_game/`. `jev` imports from `snake_game`, and `snake_game` never imports `jev`, so the game stays independent of the AI and its dependencies.
+
+Fill in `get_action` in `jev/controller.py`:
 
 ```python
-from snake_game import Action, GameState
-
 class JevController:
     def get_action(self, state: GameState) -> Action | None:
         # Decide using state.head, state.body, state.food, state.direction, ...
         return Action.UP
+
+    def reset(self) -> None:
+        # Clear any per-game memory.
+        ...
 ```
 
-There are two places to connect it:
+It follows the `Controller` protocol in `snake_game/controllers.py`. Until you implement it, it returns `None`, so the snake just goes straight.
 
-1. **Watch Jev play** — in `main.py`, replace `KeyboardController()` with your controller. The loop already calls `controller.get_action(state)` once per game tick. (You'll also want to set `started = True` so it doesn't wait for a key press.)
-2. **Headless / fast runs** — skip Pygame entirely and drive `SnakeGame` directly:
+There are two ways to run it:
+
+1. **Watch Jev play:** `uv run main.py --jev`. The game starts immediately, calls `get_action(state)` once per tick, and ignores direction keys (P, R and Esc still work). `get_action` blocks, so if Jev is slower than a tick (100 ms), the game slows down to match.
+2. **Headless / fast runs:** skip Pygame entirely and drive `SnakeGame` directly:
 
    ```python
+   from jev import JevController
+   from snake_game import SnakeGame
+
    game = SnakeGame()
    jev = JevController()
    state = game.reset()

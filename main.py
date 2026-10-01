@@ -1,4 +1,4 @@
-"""Play Snake with the keyboard.
+"""Play Snake with the keyboard, or watch Jev play with `python main.py --jev`.
 
 Rendering runs at RENDER_FPS, but the game advances on a fixed timestep of
 TICKS_PER_SECOND, so movement speed is independent of frame rate.
@@ -6,9 +6,12 @@ TICKS_PER_SECOND, so movement speed is independent of frame rate.
 
 from __future__ import annotations
 
+import argparse
+
 import pygame
 
-from snake_game.controllers import KeyboardController
+from jev import JevController
+from snake_game.controllers import Controller, KeyboardController
 from snake_game.game import SnakeGame
 from snake_game.renderer import Renderer
 
@@ -22,17 +25,22 @@ RESTART_KEYS = (pygame.K_r, pygame.K_SPACE, pygame.K_RETURN)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Play Snake.")
+    parser.add_argument("--jev", action="store_true", help="let the Jev controller play")
+    args = parser.parse_args()
+
     pygame.init()
     game = SnakeGame(GRID_WIDTH, GRID_HEIGHT)
     renderer = Renderer(GRID_WIDTH, GRID_HEIGHT)
-    controller = KeyboardController()
+    keyboard = KeyboardController()
+    controller: Controller = JevController() if args.jev else keyboard
     clock = pygame.time.Clock()
 
     step_interval = 1.0 / TICKS_PER_SECOND
     accumulator = 0.0
     state = game.reset()
     high_score = 0
-    started = False
+    started = args.jev  # Jev starts immediately; humans start on their first key press.
     paused = False
     running = True
 
@@ -50,13 +58,14 @@ def main() -> None:
                 if event.key in RESTART_KEYS:
                     state = game.reset()
                     controller.reset()
-                    started = False
+                    started = args.jev
             elif event.key == pygame.K_p and started:
                 paused = not paused
-            elif not paused and controller.handle_event(event):
+            elif not paused and not args.jev and keyboard.handle_event(event):
                 started = True
 
         if started and not paused and not state.game_over:
+            # get_action blocks, so a slow controller simply slows the game down.
             while accumulator >= step_interval and not state.game_over:
                 state, _reward, _done = game.step(controller.get_action(state))
                 accumulator -= step_interval
