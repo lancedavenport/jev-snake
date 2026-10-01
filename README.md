@@ -45,10 +45,12 @@ jev-snake/
 ├── main.py                  # Game loop: input, fixed-timestep updates, rendering
 ├── snake_game/
 │   ├── game.py              # Pure game logic (no Pygame) + reset/get_state/step API
-│   ├── controllers.py       # Controller protocol, KeyboardController, BackgroundController
+│   ├── base.py              # Controller base class (no Pygame)
+│   ├── controllers.py       # KeyboardController, BackgroundController
 │   └── renderer.py          # Draws a GameState with Pygame
 ├── jev/
 │   └── controller.py        # JevController: asks the model for each move
+├── ablation/                # Comparison agents (RandomController, ...)
 ├── .env.example             # Template for Jev's API key
 ├── LICENSE
 └── requirements.txt
@@ -99,7 +101,7 @@ Jev lives in its own package, `jev/`, next to `snake_game/`. `jev` imports from 
 
 ### How it works
 
-`JevController` in `jev/controller.py` follows the `Controller` protocol in `snake_game/controllers.py`: the game calls `get_action(state)` once per move, and `reset()` when a new game starts. Each move:
+`JevController` in `jev/controller.py` follows the `Controller` interface in `snake_game/base.py`: the game calls `get_action(state)` once per move, and `reset()` when a new game starts. Each move:
 
 1. `describe_moves` works out the moves worth considering and labels each one (see below).
 2. `ask` sends the game state, the rules and where the food is to the TypeSafe API (`system_one` with a `Choice` question, model `jev-1.13.0`), with the labeled moves as the choices.
