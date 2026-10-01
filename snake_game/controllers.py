@@ -19,6 +19,10 @@ class Controller(Protocol):
         """Return the next action, or None to keep moving in the current direction."""
         ...
 
+    def reset(self) -> None:
+        """Called when a new game starts."""
+        ...
+
 
 class KeyboardController:
     """Human input via arrow keys or WASD."""
