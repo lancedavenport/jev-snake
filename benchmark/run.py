@@ -38,9 +38,9 @@ AGENTS = {
 }
 
 
-def play(agent, seed, width, height, max_steps):
+def play(agent, seed, width, height, max_steps, starve_limit):
     controller = AGENTS[agent](seed)
-    game = SnakeGame(width, height, seed=seed)
+    game = SnakeGame(width, height, seed=seed, max_steps_without_food=starve_limit)
     state = game.reset()
     controller.reset()
 
@@ -51,6 +51,8 @@ def play(agent, seed, width, height, max_steps):
 
     if state.won:
         outcome = "win"
+    elif state.starved:
+        outcome = "starved"
     elif state.game_over:
         outcome = "died"
     else:
@@ -91,8 +93,13 @@ def main():
     parser.add_argument("--width", type=int, default=20)
     parser.add_argument("--height", type=int, default=20)
     parser.add_argument("--max-steps", type=int, default=10_000, help="end a game after this many steps")
+    parser.add_argument("--starve-limit", type=int, default=None,
+                        help="end a game after this many steps without food (default: width*height, 0 = off)")
     parser.add_argument("--verbose", action="store_true", help="show per-move logs (e.g. Jev's)")
     args = parser.parse_args()
+    if args.starve_limit is None:
+        args.starve_limit = args.width * args.height
+    starve_limit = args.starve_limit or None
 
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -107,7 +114,7 @@ def main():
         writer.writeheader()
         try:
             for seed in range(args.seed, args.seed + args.games):
-                row = play(args.agent, seed, args.width, args.height, args.max_steps)
+                row = play(args.agent, seed, args.width, args.height, args.max_steps, starve_limit)
                 writer.writerow(row)
                 f.flush()  # keep finished games if a long (or paid) run is interrupted
                 rows.append(row)

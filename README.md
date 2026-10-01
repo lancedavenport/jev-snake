@@ -80,6 +80,8 @@ state, reward, done = game.step(Action.UP)        # also accepts "UP" or None (k
 
 **Edges wrap around:** moving off one side brings the snake back on the opposite side, so the only way to die is running into yourself.
 
+**Starvation limit (optional):** `SnakeGame(..., max_steps_without_food=N)` ends the game (with `state.starved = True` and a `-1` reward) when the snake goes `N` steps without eating. It's off by default, so keyboard games are unchanged; Jev and the benchmark turn it on so an agent stuck in a loop can't play forever.
+
 **`GameState`** (immutable):
 
 | Field        | Description                                   |
@@ -93,6 +95,7 @@ state, reward, done = game.step(Action.UP)        # also accepts "UP" or None (k
 | `score`      | Food eaten                                    |
 | `steps`      | Ticks played this game                        |
 | `game_over`  | Whether the game has ended                    |
+| `starved`    | Whether it ended by the starvation limit      |
 
 `state.to_dict()` gives a plain JSON-serializable version.
 
@@ -104,7 +107,7 @@ Jev lives in its own package, `jev/`, next to `snake_game/`. `jev` imports from 
 
 ### How it works
 
-`JevController` in `jev/controller.py` follows the `Controller` interface in `snake_game/base.py`: the game calls `get_action(state)` once per move, and `reset()` when a new game starts. Each move:
+`JevController` in `jev/controller.py` subclasses `Controller` from `snake_game/base.py`: the game calls `get_action(state)` once per move, and `reset()` when a new game starts. Each move:
 
 1. `describe_moves` works out the moves worth considering and labels each one (see below).
 2. `ask` sends the game state, the rules and where the food is to the TypeSafe API (`system_one` with a `Choice` question, model `jev-1.13.0`), with the labeled moves as the choices.
@@ -151,6 +154,8 @@ There are two ways to run it:
    ```
 
    The SDK also logs each request (`typesafe_sdk` logger), including retries.
+
+   If Jev goes `JEV_MAX_STEPS_WITHOUT_FOOD` steps without eating (default: one step per board cell, set in `main.py`), the game ends as **Starved** instead of looping forever.
 2. **Headless / fast runs:** skip Pygame entirely and drive `SnakeGame` directly:
 
    ```python
@@ -174,7 +179,7 @@ uv run -m benchmark.run random --games 1000
 uv run -m benchmark.run jev --games 5 --max-steps 2000   # makes one API call per move
 ```
 
-Game N uses seed `--seed + N` (default 0) for both the food and the agent, so every agent faces the same food placement and runs are reproducible. A game ends when the snake dies, fills the board, or hits `--max-steps` (default 10,000, recorded as `step_limit`). Each row has the score, steps, outcome and time per move, and a summary prints at the end. Ctrl+C stops early and keeps the finished games.
+Game N uses seed `--seed + N` (default 0) for both the food and the agent, so every agent faces the same food placement and runs are reproducible. A game ends when the snake dies, fills the board, goes `--starve-limit` steps without eating (default: width × height, `0` turns it off, recorded as `starved`), or hits `--max-steps` (default 10,000, recorded as `step_limit`). Each row has the score, steps, outcome and time per move, and a summary prints at the end. Ctrl+C stops early and keeps the finished games.
 
 To add an agent, subclass `Controller` and register a factory in `AGENTS` in `benchmark/run.py`.
 

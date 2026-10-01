@@ -5,6 +5,7 @@ import time
 from dotenv import load_dotenv
 from typesafe_sdk import Choice, TypeSafeClient, TypeSafeError
 
+from snake_game.base import Controller
 from snake_game.game import Action
 
 load_dotenv()
@@ -17,7 +18,7 @@ RULES = (
     "Moving directly opposite your current direction is ignored. Reach the food without dying."
 )
 
-class JevController:
+class JevController(Controller):
     def __init__(self, model="jev-1.13.0"):
         api_key = os.getenv("API_KEY")
         if not api_key:
@@ -36,9 +37,6 @@ class JevController:
         moves = "; ".join(f"{move}={label}" for move, label in options.items())
         logger.info("step %d: %s (score %d, %.0f ms) | options: %s", state.steps, action.value, state.score, ms, moves)
         return action
-
-    def reset(self):
-        pass
 
     def ask(self, state, options):
         instructions = (
