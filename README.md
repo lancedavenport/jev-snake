@@ -123,7 +123,17 @@ API_KEY=your-key-here
 
 There are two ways to run it:
 
-1. **Watch Jev play:** `uv run main.py --jev`. The game starts immediately, calls `get_action(state)` once per tick, and ignores direction keys (P, R and Esc still work). `get_action` blocks, so if Jev is slower than a tick (100 ms), the game slows down to match.
+1. **Watch Jev play:** `uv run main.py --jev`. The game starts immediately and ignores direction keys (P, R and Esc still work). Jev plays **turn-based**: `get_action` runs on a background thread (`BackgroundController` in `snake_game/controllers.py`), and the game steps only once Jev has answered for the current state, at most 10 steps per second. The window keeps drawing at 60 FPS while Jev thinks, and Jev never acts on an outdated board.
+
+   Each move is logged to the terminal with its latency, and failed API calls are logged as warnings (the snake goes straight on a failure):
+
+   ```text
+   INFO jev.controller: step 12: LEFT (score 2, 430 ms)
+   WARNING jev.controller: step 13: API call failed, going straight: ...
+   INFO root: Game over: score 7 after 94 steps
+   ```
+
+   The SDK also logs each request (`typesafe_sdk` logger), including retries.
 2. **Headless / fast runs:** skip Pygame entirely and drive `SnakeGame` directly:
 
    ```python

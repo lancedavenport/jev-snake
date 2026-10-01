@@ -2,10 +2,14 @@
 
 from snake_game.game import Action, GameState
 from typesafe_sdk import TypeSafeClient, Choice, TypeSafeError
+import logging
 import os
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 RULES = (
       "You control a snake on a grid. (0, 0) is the top-left cell; x grows to the right, y grows downward. "
@@ -23,10 +27,19 @@ class JevController:
 
     def get_action(self, state: GameState) -> Action | None:
         """Called once per game tick. Return an Action, or None to keep going straight."""
+        start = time.perf_counter()
         try:
-            return self.ask(state)
-        except TypeSafeError:
+            action = self.ask(state)
+        except TypeSafeError as e:
+            # Failed calls fall back to going straight; log them so they don't look like bad decisions.
+            logger.warning("step %d: API call failed, going straight: %s", state.steps, e)
             return None
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "step %d: %s (score %d, %.0f ms)",
+            state.steps, action.value if action else "NONE", state.score, elapsed_ms,
+        )
+        return action
 
     def reset(self) -> None:
         """Called when a new game starts. Clear any per-game memory here."""
