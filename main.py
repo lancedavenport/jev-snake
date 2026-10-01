@@ -23,6 +23,8 @@ GRID_HEIGHT = 20
 TICKS_PER_SECOND = 10
 RENDER_FPS = 60
 MAX_FRAME_TIME = 0.25  # Avoid a burst of catch-up steps after a stall (e.g. window drag).
+# Jev's game ends if it goes this long without eating (it can get stuck in a loop).
+JEV_MAX_STEPS_WITHOUT_FOOD = GRID_WIDTH * GRID_HEIGHT
 
 RESTART_KEYS = (pygame.K_r, pygame.K_SPACE, pygame.K_RETURN)
 
@@ -34,7 +36,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     pygame.init()
-    game = SnakeGame(GRID_WIDTH, GRID_HEIGHT)
+    starve_limit = JEV_MAX_STEPS_WITHOUT_FOOD if args.jev else None
+    game = SnakeGame(GRID_WIDTH, GRID_HEIGHT, max_steps_without_food=starve_limit)
     renderer = Renderer(GRID_WIDTH, GRID_HEIGHT)
     keyboard = KeyboardController()
     jev = BackgroundController(JevController()) if args.jev else None
@@ -78,7 +81,8 @@ def main() -> None:
                     state = game.step(jev.take()).state
                     accumulator -= step_interval
                     if state.game_over:
-                        logging.info("Game over: score %d after %d steps", state.score, state.steps)
+                        reason = " (starved: no food in %d steps)" % starve_limit if state.starved else ""
+                        logging.info("Game over: score %d after %d steps%s", state.score, state.steps, reason)
             else:
                 while accumulator >= step_interval and not state.game_over:
                     state = game.step(keyboard.get_action(state)).state
@@ -90,7 +94,7 @@ def main() -> None:
 
         message, hint = None, None
         if state.game_over:
-            message = "You Win!" if state.won else "Game Over"
+            message = "You Win!" if state.won else "Starved" if state.starved else "Game Over"
             hint = f"Score {state.score}  -  press R to play again"
         elif paused:
             message, hint = "Paused", "Press P to resume"

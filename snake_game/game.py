@@ -62,6 +62,7 @@ class GameState:
     score: int
     steps: int
     game_over: bool
+    starved: bool = False  # Game ended by the max_steps_without_food limit.
 
     @property
     def head(self) -> Position:
@@ -101,13 +102,22 @@ class SnakeGame:
     """Grid-based Snake. One call to `step()` moves the snake exactly one cell.
 
     The board edges wrap around, so the only way to die is hitting yourself.
+    If `max_steps_without_food` is set, the game also ends (as `starved`) when
+    the snake goes that many steps without eating, so a looping AI can't run forever.
     """
 
-    def __init__(self, width: int = 20, height: int = 20, seed: int | None = None) -> None:
+    def __init__(
+        self,
+        width: int = 20,
+        height: int = 20,
+        seed: int | None = None,
+        max_steps_without_food: int | None = None,
+    ) -> None:
         if width < 5 or height < 5:
             raise ValueError("Board must be at least 5x5.")
         self.width = width
         self.height = height
+        self.max_steps_without_food = max_steps_without_food
         self._rng = random.Random(seed)
         self.reset()
 
@@ -118,7 +128,9 @@ class SnakeGame:
         self._direction = Action.RIGHT
         self._score = 0
         self._steps = 0
+        self._steps_since_food = 0
         self._game_over = False
+        self._starved = False
         self._food = self._spawn_food()
         return self.get_state()
 
@@ -132,6 +144,7 @@ class SnakeGame:
             score=self._score,
             steps=self._steps,
             game_over=self._game_over,
+            starved=self._starved,
         )
 
     def step(self, action: Action | str | None = None) -> StepResult:
@@ -168,10 +181,17 @@ class SnakeGame:
             self._score += 1
             reward = REWARD_FOOD
             self._food = self._spawn_food()
+            self._steps_since_food = 0
             if self._food is None:  # Board is full: the player has won.
                 self._game_over = True
         else:
             self._snake.pop()
+            self._steps_since_food += 1
+            limit = self.max_steps_without_food
+            if limit is not None and self._steps_since_food >= limit:
+                self._game_over = True
+                self._starved = True
+                reward = REWARD_DEATH
 
         return StepResult(self.get_state(), reward, self._game_over)
 
