@@ -51,6 +51,9 @@ jev-snake/
 ├── jev/
 │   └── controller.py        # JevController: asks the model for each move
 ├── ablation/                # Comparison agents (RandomController, ...)
+├── benchmark/
+│   ├── run.py               # Headless benchmark: plays N seeded games, writes a CSV
+│   └── results/             # One CSV per run
 ├── .env.example             # Template for Jev's API key
 ├── LICENSE
 └── requirements.txt
@@ -161,6 +164,19 @@ There are two ways to run it:
        state, reward, done = game.step(jev.get_action(state))
    print("Final score:", state.score)
    ```
+
+## Benchmark
+
+`benchmark/run.py` plays an agent headlessly (no window) over a fixed set of seeds and writes one CSV row per game to `benchmark/results/`:
+
+```bash
+uv run -m benchmark.run random --games 1000
+uv run -m benchmark.run jev --games 5 --max-steps 2000   # makes one API call per move
+```
+
+Game N uses seed `--seed + N` (default 0) for both the food and the agent, so every agent faces the same food placement and runs are reproducible. A game ends when the snake dies, fills the board, or hits `--max-steps` (default 10,000, recorded as `step_limit`). Each row has the score, steps, outcome and time per move, and a summary prints at the end. Ctrl+C stops early and keeps the finished games.
+
+To add an agent, subclass `Controller` and register a factory in `AGENTS` in `benchmark/run.py`.
 
 ## License
 
