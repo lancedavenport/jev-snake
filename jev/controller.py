@@ -80,6 +80,7 @@ def describe_moves(state):
     deadly = {}
     roomy = {}
     traps = {}
+    eat = None
 
     for action in Action:
         if action == state.direction.opposite:
@@ -90,6 +91,8 @@ def describe_moves(state):
             deadly[action.value] = "DEADLY: runs into your own body"
             continue
 
+        if nxt == state.food:
+            eat = action.value
         closer = abs(dx - mx) + abs(dy - my) < abs(dx) + abs(dy)
         food = "moves closer to the food" if closer else "moves away from the food"
         room = _room_after_move(state, nxt)
@@ -102,7 +105,8 @@ def describe_moves(state):
         return roomy
     if traps:
         most = max(room for room, _ in traps.values())
-        return {move: label for move, (room, label) in traps.items() if room == most}
+        # eating always leaves one less cell (the tail stays put), so keep that move too
+        return {move: label for move, (room, label) in traps.items() if room == most or move == eat}
     return deadly
 
 def _room_after_move(state, head):
