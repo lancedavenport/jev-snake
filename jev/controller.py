@@ -96,7 +96,11 @@ def describe_food(state: GameState) -> str:
 
 
 def describe_moves(state: GameState) -> dict[str, str]:
-    """The legal moves this turn (no reversal), each labeled safe/DEADLY and closer/away from food."""
+    """The moves to offer this turn, each labeled safe/DEADLY and closer/away from food.
+
+    Reversals are never offered (the game ignores them), and DEADLY moves are only
+    offered when every move is DEADLY, so Jev can't pick one while a safe move exists.
+    """
     hx, hy = state.head
     dx, dy = _food_offset(state)
     blocked = set(state.snake[:-1])  # the tail moves out of the way
@@ -111,4 +115,5 @@ def describe_moves(state: GameState) -> dict[str, str]:
             options[action.value] = "DEADLY: runs into your own body"
         else:
             options[action.value] = "safe, " + ("moves closer to the food" if closer else "moves away from the food")
-    return options
+    safe = {move: label for move, label in options.items() if not label.startswith("DEADLY")}
+    return safe or options
