@@ -6,7 +6,9 @@ AI/Jev controller only needs to implement the `Controller` protocol.
 
 from __future__ import annotations
 
+import threading
 from collections import deque
+from concurrent.futures import Future
 from typing import Protocol
 
 import pygame
@@ -60,3 +62,46 @@ class KeyboardController:
 
     def reset(self) -> None:
         self._queue.clear()
+
+
+class BackgroundController:
+    """Runs a slow controller (e.g. one that calls an API) on a worker thread.
+
+    Turn-based: `ready(state)` starts a request for that state and reports whether
+    the answer has arrived; `take()` collects it. The caller only steps the game
+    after `take()`, so the answer always matches the current state, and the
+    window keeps drawing while the controller thinks.
+    """
+
+    def __init__(self, controller: Controller) -> None:
+        self._controller = controller
+        self._pending: Future[Action | None] | None = None
+
+    def ready(self, state: GameState) -> bool:
+        if self._pending is None:
+            self._pending = self._start(state)
+        return self._pending.done()
+
+    def take(self) -> Action | None:
+        """Return the finished answer (re-raising any error from the controller)."""
+        assert self._pending is not None and self._pending.done()
+        future, self._pending = self._pending, None
+        return future.result()
+
+    def reset(self) -> None:
+        # Any in-flight request belongs to the old game; its result is simply dropped.
+        self._pending = None
+        self._controller.reset()
+
+    def _start(self, state: GameState) -> Future[Action | None]:
+        future: Future[Action | None] = Future()
+
+        def run() -> None:
+            try:
+                future.set_result(self._controller.get_action(state))
+            except BaseException as e:
+                future.set_exception(e)
+
+        # Daemon thread so closing the window never waits on a slow request.
+        threading.Thread(target=run, daemon=True).start()
+        return future
