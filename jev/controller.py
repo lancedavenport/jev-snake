@@ -1,6 +1,6 @@
 """Jev's controller. Implement `get_action` to decide each move."""
 
-from snake_game.game import Action, GameState
+from snake_game.game import Action, GameState, Position
 from typesafe_sdk import TypeSafeClient, Choice, TypeSafeError
 import logging
 import os
@@ -59,7 +59,8 @@ class JevController:
                 "direction": Choice(
                     instructions=(
                         RULES + " " + describe_food(curr_state)
-                        + " Pick the move that is safe and gets closer to the food."
+                        + " Each move says how many empty cells of room you could still reach after it."
+                        " Pick the move that gets closer to the food, unless another move has much more room."
                         " Never pick a DEADLY move unless every move is DEADLY."
                     ),
                     criteria=options,
@@ -96,19 +97,57 @@ def describe_food(state: GameState) -> str:
 
 
 def describe_moves(state: GameState) -> dict[str, str]:
-    """The legal moves this turn (no reversal), each labeled safe/DEADLY and closer/away from food."""
+    """The moves to offer this turn, each labeled with safety, food direction and room.
+
+    Reversals are never offered (the game ignores them). DEADLY moves are only offered
+    when every move is DEADLY, and TRAP moves (less room than the snake's length) only
+    when every safe move is a trap, in which case just the roomiest ones are offered.
+    """
     hx, hy = state.head
     dx, dy = _food_offset(state)
     blocked = set(state.snake[:-1])  # the tail moves out of the way
-    options = {}
+    deadly: dict[str, str] = {}
+    roomy: dict[str, str] = {}
+    traps: dict[str, tuple[int, str]] = {}
     for action in Action:
         if action == state.direction.opposite:
             continue  # reversing is ignored by the game, so don't offer it
         mx, my = action.delta
         nxt = ((hx + mx) % state.width, (hy + my) % state.height)
-        closer = abs(dx - mx) + abs(dy - my) < abs(dx) + abs(dy)
         if nxt in blocked:
-            options[action.value] = "DEADLY: runs into your own body"
+            deadly[action.value] = "DEADLY: runs into your own body"
+            continue
+        closer = abs(dx - mx) + abs(dy - my) < abs(dx) + abs(dy)
+        food = "moves closer to the food" if closer else "moves away from the food"
+        room = _room_after_move(state, nxt)
+        if room >= len(state.snake):
+            roomy[action.value] = f"safe, {food}, {room} cells of room"
         else:
-            options[action.value] = "safe, " + ("moves closer to the food" if closer else "moves away from the food")
-    return options
+            traps[action.value] = (room, f"TRAP: only {room} cells of room, {food}")
+    if roomy:
+        return roomy
+    if traps:
+        most = max(room for room, _ in traps.values())
+        return {move: label for move, (room, label) in traps.items() if room == most}
+    return deadly
+
+
+def _room_after_move(state: GameState, head: Position) -> int:
+    """How many empty cells the snake could still reach after moving its head to `head`.
+
+    Flood fill over the board with the snake's body (after the move) as walls.
+    Conservative: it ignores that the tail keeps moving and frees up cells over time.
+    """
+    eating = head == state.food
+    body = state.snake if eating else state.snake[:-1]  # the tail only stays when growing
+    walls = set(body)
+    seen = {head}
+    frontier = [head]
+    while frontier:
+        x, y = frontier.pop()
+        for mx, my in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            cell = ((x + mx) % state.width, (y + my) % state.height)
+            if cell not in walls and cell not in seen:
+                seen.add(cell)
+                frontier.append(cell)
+    return len(seen) - 1  # don't count the head's own cell
