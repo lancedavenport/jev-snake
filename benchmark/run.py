@@ -23,8 +23,13 @@ FIELDS = ["agent", "seed", "score", "steps", "outcome", "seconds", "ms_per_move"
 
 
 def make_random(seed):
-    from ablation import RandomController
+    from baselines import RandomController
     return RandomController(seed=seed)
+
+
+def make_bfs(seed):
+    from baselines import BFSController
+    return BFSController()
 
 
 def make_jev(seed):
@@ -34,6 +39,7 @@ def make_jev(seed):
 
 AGENTS = {
     "random": make_random,
+    "bfs": make_bfs,
     "jev": make_jev,
 }
 
