@@ -50,7 +50,7 @@ jev-snake/
 │   └── renderer.py          # Draws a GameState with Pygame
 ├── jev/
 │   └── controller.py        # JevController: asks the model for each move
-├── baselines/               # Comparison agents (RandomController, BFSController)
+├── baselines/               # Comparison agents (random, greedy, BFS)
 ├── benchmark/
 │   ├── run.py               # Headless benchmark: plays N seeded games, writes a CSV
 │   └── results/             # One CSV per run
