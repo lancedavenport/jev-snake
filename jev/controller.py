@@ -5,7 +5,7 @@ import time
 from dotenv import load_dotenv
 from typesafe_sdk import Choice, TypeSafeClient, TypeSafeError
 
-from snake_game.game import Action, GameState, Position
+from snake_game.game import Action
 
 load_dotenv()
 
@@ -17,15 +17,14 @@ RULES = (
     "Moving directly opposite your current direction is ignored. Reach the food without dying."
 )
 
-
 class JevController:
-    def __init__(self, model: str | None = "jev-1.13.0") -> None:
+    def __init__(self, model="jev-1.13.0"):
         api_key = os.getenv("API_KEY")
         if not api_key:
             raise SystemExit("API_KEY is not set; copy .env.example to .env and add your key.")
         self.client = TypeSafeClient(api_key=api_key, model=model)
 
-    def get_action(self, state: GameState) -> Action | None:
+    def get_action(self, state):
         options = describe_moves(state)
         start = time.perf_counter()
         try:
@@ -38,10 +37,10 @@ class JevController:
         logger.info("step %d: %s (score %d, %.0f ms) | options: %s", state.steps, action.value, state.score, ms, moves)
         return action
 
-    def reset(self) -> None:
+    def reset(self):
         pass
 
-    def ask(self, state: GameState, options: dict[str, str]) -> Action:
+    def ask(self, state, options):
         instructions = (
             f"{RULES} {describe_food(state)} "
             "Each move says how many empty cells of room you could still reach after it. "
@@ -54,21 +53,18 @@ class JevController:
         )
         return Action(response.choices["direction"].choice)
 
-
-def _offset(a: int, b: int, size: int) -> int:
+def _offset(a, b, size):
     # shortest signed distance on a wrapping axis
     d = (b - a) % size
     return d - size if d > size // 2 else d
 
-
-def _food_offset(state: GameState) -> tuple[int, int]:
+def _food_offset(state):
     assert state.food is not None  # only None after the board is full
     hx, hy = state.head
     fx, fy = state.food
     return _offset(hx, fx, state.width), _offset(hy, fy, state.height)
 
-
-def describe_food(state: GameState) -> str:
+def describe_food(state):
     dx, dy = _food_offset(state)
     parts = []
     if dx:
@@ -77,16 +73,15 @@ def describe_food(state: GameState) -> str:
         parts.append(f"{abs(dy)} cells {'down' if dy > 0 else 'up'}")
     return "The food is " + " and ".join(parts) + " from your head."
 
-
-def describe_moves(state: GameState) -> dict[str, str]:
+def describe_moves(state):
     # Skip reversals (the game ignores them). Only offer traps if nothing roomier
     # exists, and deadly moves if nothing else is left.
     hx, hy = state.head
     dx, dy = _food_offset(state)
     blocked = set(state.snake[:-1])  # tail moves out of the way
-    deadly: dict[str, str] = {}
-    roomy: dict[str, str] = {}
-    traps: dict[str, tuple[int, str]] = {}
+    deadly = {}
+    roomy = {}
+    traps = {}
 
     for action in Action:
         if action == state.direction.opposite:
@@ -112,8 +107,7 @@ def describe_moves(state: GameState) -> dict[str, str]:
         return {move: label for move, (room, label) in traps.items() if room == most}
     return deadly
 
-
-def _room_after_move(state: GameState, head: Position) -> int:
+def _room_after_move(state, head):
     # flood fill from the new head, treating the body as walls
     eating = head == state.food
     walls = set(state.snake if eating else state.snake[:-1])
