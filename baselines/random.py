@@ -1,8 +1,6 @@
-from snake_game import Action, Controller
 import random
 
-from snake_game.game import GameState
-
+from snake_game import Action, Controller, GameState
 
 class RandomController(Controller):
     def __init__(self, seed=None):
