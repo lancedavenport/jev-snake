@@ -9,3 +9,6 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+# Secrets (.env.example stays tracked)
+.env
