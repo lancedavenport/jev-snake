@@ -27,6 +27,11 @@ def make_random(seed):
     return RandomController(seed=seed)
 
 
+def make_greedy(seed):
+    from baselines import GreedyController
+    return GreedyController()
+
+
 def make_bfs(seed):
     from baselines import BFSController
     return BFSController()
@@ -39,6 +44,7 @@ def make_jev(seed):
 
 AGENTS = {
     "random": make_random,
+    "greedy": make_greedy,
     "bfs": make_bfs,
     "jev": make_jev,
 }
